@@ -19,13 +19,18 @@ data['FilePath'] = data['FilePath'].str.replace(r"\\\\|\\", "/", regex=True)
 output_folder = "/mnt/data1"
 log_file = "/mnt/data1/conversion_log.txt"
 
+# Function to validate folder_path
+def is_valid_path(path):
+    return isinstance(path, (str, bytes, os.PathLike)) and not pd.isna(path)
+
+# Function to convert DICOM to PNG while keeping original dimensions
 def convert_dicom_to_png(dicom_path, output_path):
     try:
         # Load the DICOM file
         ds = pydicom.dcmread(dicom_path)
         pixel_array = ds.pixel_array.astype(np.float32)
 
-        # Adjust using Rescale Slope and Intercept
+        # Adjust using Rescale Slope and Intercept (if available)
         slope = getattr(ds, "RescaleSlope", 1)
         intercept = getattr(ds, "RescaleIntercept", 0)
         pixel_array = pixel_array * slope + intercept
@@ -63,7 +68,7 @@ def log_conversion(file_name, status):
     with open(log_file, "a") as log:
         log.write(f"{file_name},{status}\n")
 
-# Create the output folder if it doesn't exist
+# Create the base output folder if it doesn't exist
 os.makedirs(output_folder, exist_ok=True)
 
 # Counter for processed images
@@ -77,13 +82,19 @@ for _, row in data.iterrows():
     #    break
 
     folder_path = row["FilePath"]
+    
+    # Validate folder_path
+    if not is_valid_path(folder_path):
+        print(f"Invalid or missing folder path: {folder_path}")
+        log_conversion(folder_path, "Invalid Path")
+        continue  # Skip this row
 
     # Check if the folder exists
     if os.path.exists(folder_path):
         # List all files in the folder
         for file_name in os.listdir(folder_path):
-            #if processed_images >= max_images:
-            #    break
+        #    if processed_images >= max_images:
+        #        break
 
             if "LCC" in file_name or "RCC" in file_name:
                 dicom_path = os.path.join(folder_path, file_name)
