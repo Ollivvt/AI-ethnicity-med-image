@@ -1,2 +1,4 @@
 /myenv
-/data
+*.h5
+*.pth
+*.csv
